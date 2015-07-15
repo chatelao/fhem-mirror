@@ -189,6 +189,7 @@ sub HUEBridge_OpenDev($)
 sub HUEBridge_Pair($)
 {
   my ($hash) = @_;
+  my $name = $hash->{NAME};
 
   $hash->{STATE} = 'Pairing';
 
@@ -200,6 +201,8 @@ sub HUEBridge_Pair($)
 
       return undef;
     }
+
+  $attr{$name}{key} = $result->{success}{username} if( $result->{success}{username} );
 
   $hash->{STATE} = 'Paired';
 
