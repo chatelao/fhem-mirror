@@ -1,4 +1,4 @@
-# $Id: 73_km200.pm 0053 2015-07-15 15:00:00Z Matthias_Deeke $
+# $Id: 73_km200.pm 0054 2015-07-15 17:00:00Z Matthias_Deeke $
 ########################################################################################################################
 #
 #     73_km200.pm
@@ -212,6 +212,7 @@
 #		0053    15.07.2015	Sailor				km200_ParseHttpResponseInit		Static Service deleted
 #		0053    15.07.2015	Sailor				km200_GetStatService			Deleted
 #		0053    15.07.2015	Sailor				km200_ParseHttpResponseStat		Deleted
+#		0053    15.07.2015	Sailor				km200_GetDynService				Delete Timer after start of polling to avoid clashes
 ########################################################################################################################
 
 
@@ -2590,6 +2591,9 @@ sub km200_GetDynService($)
 		
 		if ($hash->{CONSOLEMESSAGE} == true) {print("$Service\n");}
 		### Console outputs for debugging purposes
+				
+		### Stop the current timer
+		RemoveInternalTimer($hash);
 		
 		my $url = "http://" . $km200_gateway_host . $Service;
 		my $param = {
