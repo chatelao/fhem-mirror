@@ -174,6 +174,7 @@ sub FRITZBOX_Initialize($)
                 ."ringWithIntern:0,1,2 "
                 ."telnetUser "
                 ."telnetTimeOut "
+                ."useGuiHack:0,1 "
                # ."ttsRessource:Google,ESpeak "
                 .$readingFnAttributes;
 } # end FRITZBOX_Initialize
@@ -336,7 +337,7 @@ sub FRITZBOX_Set($$@)
          }
          else { #webcm
             my @webCmdArray = ( ["dect:settings/enabled" => $state] );
-            FRITZBOX_Web_PostCmd ($hash, \@webCmdArray);
+            FRITZBOX_Web_CmdPost ($hash, \@webCmdArray);
          }
          
          readingsSingleUpdate($hash,"box_dect",$val[0], 1);
@@ -354,7 +355,7 @@ sub FRITZBOX_Set($$@)
          }
          else { #webcm
             my @webCmdArray = ( ["telcfg:settings/Diversity".( $val[0] - 1 )."/Active " => $state] );
-            FRITZBOX_Web_PostCmd ($hash, \@webCmdArray);
+            FRITZBOX_Web_CmdPost ($hash, \@webCmdArray);
          }
          readingsSingleUpdate($hash,"diversity".$val[0]."_state",$val[1], 1);
          return undef;
@@ -431,7 +432,7 @@ sub FRITZBOX_Set($$@)
          }
          else { #webcm
             my @webCmdArray = ( ["tam:settings/TAM".( $val[0] - 1 )."/Active" => $state] );
-            FRITZBOX_Web_PostCmd ($hash, \@webCmdArray);
+            FRITZBOX_Web_CmdPost ($hash, \@webCmdArray);
          }
          
          readingsSingleUpdate($hash,"tam".$val[0]."_state",$val[1], 1);
@@ -568,7 +569,6 @@ sub FRITZBOX_Readout_Start($)
    else {
       $runFn = "FRITZBOX_Readout_Run_Web";
       $runFn = "FRITZBOX_Readout_Run_Shell"     if AttrVal( $name, "forceTelnetConnection",  0 ) == 1 || $hash->{REMOTE} == 0;
-
    }
    
    if( $interval != 0 ) {
@@ -585,6 +585,8 @@ sub FRITZBOX_Readout_Start($)
       sleep 5     unless $hash->{REMOTE}==1; 
       delete( $hash->{helper}{READOUT_RUNNING_PID} );
    }
+   
+   $hash->{fhem}{LOCAL} = 2   if $hash->{fhem}{LOCAL} == 1;
    
    FRITZBOX_Log $hash, 4, "Fork process $runFn";
    $hash->{helper}{READOUT_RUNNING_PID} = BlockingCall($runFn, $name,
@@ -771,7 +773,7 @@ sub FRITZBOX_Readout_Run_Shell($)
    my $startTime = time();
 
    my $slowRun = 0;
-   if ( int(time/3600) != $hash->{fhem}{lastHour} || $hash->{fhem}{LOCAL} == 1) {
+   if ( int(time/3600) != $hash->{fhem}{lastHour} || $hash->{fhem}{LOCAL} != 0) {
       FRITZBOX_Readout_Add_Reading $hash, \@roReadings, "fhem->lastHour", int(time/3600);
       $slowRun = 1;
       FRITZBOX_Log $hash, 4, "Start update of slow changing device readings.";
@@ -1104,7 +1106,7 @@ sub FRITZBOX_Readout_Run_Web($)
    my $runNo;
    my $sid;
    
-   if ( int(time/3600) != $hash->{fhem}{lastHour} || $hash->{fhem}{LOCAL} == 1) {
+   if ( int(time/3600) != $hash->{fhem}{lastHour} || $hash->{fhem}{LOCAL} != 0) {
          FRITZBOX_Log $hash, 4, "Start update of slow changing device readings.";
       FRITZBOX_Readout_Add_Reading $hash, \@roReadings, "fhem->lastHour", int(time/3600);
    # Box model
@@ -2050,7 +2052,7 @@ sub FRITZBOX_Call_Run_Web($)
    my $ringWithIntern = AttrVal( $name, "ringWithIntern", 1 );
    if ($ringWithIntern =~ /^([1-3])$/) {
       push @webCmdArray, "telcfg:settings/DialPort" => $ringWithIntern;
-      $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+      $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
    }
   
 
@@ -2062,7 +2064,7 @@ sub FRITZBOX_Call_Run_Web($)
    }
    else { # ring with webcm
       push @webCmdArray, "telcfg:command/Dial" => $extNo."#";
-      $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+      $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
    }
    
    sleep $duration; #+1; # 1s added because it takes sometime until it starts ringing
@@ -2072,7 +2074,7 @@ sub FRITZBOX_Call_Run_Web($)
    $result = FRITZBOX_TR064_Cmd( $hash, 0, \@tr064CmdArray )   if $hash->{SECPORT};
    push (@webCmdArray, "telcfg:command/Hangup" => "")      unless $hash->{SECPORT};
    push @webCmdArray, "telcfg:settings/DialPort" => 50;
-   $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+   $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
    
 #Preparing 7th command array to reset everything
    if ($ttsLink) {
@@ -2177,14 +2179,14 @@ sub FRITZBOX_GuestWlan_Run_Web($)
    else { #webcm
       push @webCmdArray, "wlan:settings/wlan_enable" => "1"    if $state == 1;
       # push @webCmdArray, "active" => "on";
-      # FRITZBOX_Web_PostCmd ($hash, \@webCmdArray, '/wlan/wlan_settings.lua');
+      # FRITZBOX_Web_CmdPost ($hash, \@webCmdArray, '/wlan/wlan_settings.lua');
       push @webCmdArray, "wlan:settings/guest_ap_enabled" => $state;
-      $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+      $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
    }
 
    # push @webCmdArray, "autoupdate" => "on";
    # push @webCmdArray, "activate_guest_access" => $val[0];
-   # FRITZBOX_Web_PostCmd ($hash, \@webCmdArray, '/wlan/guest_access.lua');
+   # FRITZBOX_Web_CmdPost ($hash, \@webCmdArray, '/wlan/guest_access.lua');
 #POSTDATA=autoupdate=on&activate_guest_access=on&guest_ssid=Gast-WLAN&sec_mode=3&wpa_key=Baby%2412sitter&push_service=on&group_access=on&down_time_activ=on&down_time_value=240&disconnect_guest_access=on&apply=
    
 # Read WLAN-Status
@@ -2278,9 +2280,9 @@ sub FRITZBOX_Wlan_Run_Web($)
    }
    else { #webcm
       push @webCmdArray, "wlan:settings/wlan_enable" => $state;
-      FRITZBOX_Web_PostCmd ($hash, \@webCmdArray);
+      FRITZBOX_Web_CmdPost ($hash, \@webCmdArray);
       # push @webCmdArray, "active" => "on" if $val[0] eq "on";
-      # FRITZBOX_Web_PostCmd ($hash, \@webCmdArray, '/wlan/wlan_settings.lua');
+      # FRITZBOX_Web_CmdPost ($hash, \@webCmdArray, '/wlan/wlan_settings.lua');
    }
    
 # Read WLAN-Status
@@ -2572,6 +2574,7 @@ sub FRITZBOX_Ring_Run_Web($)
    my $result;
    my $curCallerName;
    my @webCmdArray;
+   my @getCmdArray;
    my @tr064CmdArray;
    my @roReadings;
    my $duration = 5;
@@ -2584,6 +2587,7 @@ sub FRITZBOX_Ring_Run_Web($)
    my $fhemRadioStation;
    my $startValue;
    my $startTime = time();
+   my $useGuiHack = AttrVal( $name, "useGuiHack", 0 );
  
  # Check if 1st parameter are comma separated numbers
    return $name."|0|Error: Parameter '$intNo' not a number (only commas (,) are allowed to separate numbers)"
@@ -2741,7 +2745,7 @@ sub FRITZBOX_Ring_Run_Web($)
    }
    
    #Execute command array
-   FRITZBOX_Web_PostCmd( $hash, \@webCmdArray )       if int @webCmdArray;
+   FRITZBOX_Web_CmdPost( $hash, \@webCmdArray )       if int @webCmdArray;
    
 #Preparing 2nd command array to set ring parameters
 # Change ring tone of Fritz!Fons
@@ -2749,12 +2753,16 @@ sub FRITZBOX_Ring_Run_Web($)
       FRITZBOX_Log $hash, 3, "No Fritz!Fon identified, ring tone will be ignored."
          unless @FritzFons;
       foreach (@FritzFons) {
-         push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/IntRingTone" => $ringTone;
+         # push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/IntRingTone" => $ringTone;
+         my $getCmdStr = "&ring_tone_radio_test=1&idx=".$_."&start_ringtest=1&ringtone=".$ringTone;
          FRITZBOX_Log $hash, 4, "Change temporarily internal ring tone of dect".$_." to $ringTone";
          if ($ttsLink) {
-            push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/RadioRingID" => $fhemRadioStation;
+            # push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/RadioRingID" => $fhemRadioStation;
+            $getCmdStr .= "&ring_tone_radio_test=".$fhemRadioStation;
             FRITZBOX_Log $hash, 4, "Change temporarily radio station of dect".$_." to $fhemRadioStation (FHEM)";
          }
+         push @getCmdArray, [ "fon_devices/edit_dect_ring_tone.lua" => $getCmdStr]
+               if $useGuiHack;
       }
    }
 
@@ -2799,8 +2807,11 @@ sub FRITZBOX_Ring_Run_Web($)
       push @webCmdArray, 'configd:settings/WEBRADIO'.$fhemRadioStation.'/URL' => $ttsLink;
    }
 #Execute command array
-   $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray )
+   $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray )
       if int( @webCmdArray ) > 0;
+
+   $result = FRITZBOX_Web_CmdGet( $hash, \@getCmdArray )
+      if int( @getCmdArray ) > 0;
 
    $intNo =~ s/,/#/g;
    
@@ -2812,7 +2823,7 @@ sub FRITZBOX_Ring_Run_Web($)
    }
    else {
       push @webCmdArray, "telcfg:command/Dial" => "**".$intNo."#";
-      $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+      $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
    }
    
    sleep $duration; #+1; # 1s added because it takes sometime until it starts ringing
@@ -2829,17 +2840,22 @@ sub FRITZBOX_Ring_Run_Web($)
    if ($ringTone) {
       foreach (@FritzFons) {
          my $value = $startValue->{dectUser}->[$_]->{IntRingTone};
-         push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/IntRingTone" => $value;
+         # push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/IntRingTone" => $value;
+         my $getCmdStr = "&ring_tone_radio_test=1&idx=".$_."&start_ringtest=1&ringtone=".$value;
             FRITZBOX_Log $hash, 4, "Reset ring tone of dect$_ to $value";
          # Reset internet station for the Fritz!Fons
          if ($ttsLink)
          {
             $value = $startValue->{dectUser}->[$_]->{RadioRingID};
-            push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/RadioRingID" => $value;
+            # push @webCmdArray, "telcfg:settings/Foncontrol/User".$_."/RadioRingID" => $value;
+            $getCmdStr .= "&ring_tone_radio_test=".$value;
             FRITZBOX_Log $hash, 4, "Reset radio station of dect$_ to $value";
          }
+         push @getCmdArray, [ "fon_devices/edit_dect_ring_tone.lua" => $getCmdStr] 
+               if $useGuiHack ;
       }
    }
+
 # Reset name of calling number
    if ($ringWithIntern =~ /^([1-2])$/) {
       my $fonName = $startValue->{fonPort}->[$ringWithIntern-1]->{Name};
@@ -2857,7 +2873,10 @@ sub FRITZBOX_Ring_Run_Web($)
 #set Fritzbox ring 612 show:test test say:test test
    
 # Execute command array
-   $result = FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+   $result = FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
+
+   $result = FRITZBOX_Web_CmdGet( $hash, \@getCmdArray )
+      if int( @getCmdArray ) > 0;
    
    if ($result->[0] == 1) {
       FRITZBOX_Readout_Add_Reading $hash, \@roReadings, "fhem->sid", $result->[1];
@@ -3011,7 +3030,7 @@ sub FRITZBOX_Set_Alarm_Web($@)
       readingsBulkUpdate($hash,"alarm".$alarm."_wdays",$dayTxt);
    }
 
-   FRITZBOX_Web_PostCmd ($hash, \@webCmdArray);
+   FRITZBOX_Web_CmdPost ($hash, \@webCmdArray);
    readingsEndUpdate($hash, 1);
    
    return undef;
@@ -3416,7 +3435,7 @@ sub FRITZBOX_StartRadio_Web($@)
    push @webCmdArray, "telcfg:settings/Foncontrol/User".$userNo."/IntRingTone" => 33;
    push @webCmdArray, "telcfg:settings/Foncontrol/User".$userNo."/RadioRingID" => $radioStation
       if defined $radioStation;
-   FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+   FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
 
       FRITZBOX_Log $hash, 5, "Call $intNo";
    if ($hash->{SECPORT}) { #ring with TR-064
@@ -3425,7 +3444,7 @@ sub FRITZBOX_StartRadio_Web($@)
    }
    else { # ring with webcm
       push @webCmdArray, "telcfg:command/Dial" => "**".$intNo."#";
-      FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+      FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
    }
 
 # Reset ring tone
@@ -3433,7 +3452,7 @@ sub FRITZBOX_StartRadio_Web($@)
    push @webCmdArray, "telcfg:settings/Foncontrol/User".$userNo."/IntRingTone" => $startValue->{curRingTone};
    push @webCmdArray, "telcfg:settings/Foncontrol/User".$userNo."/RadioRingID" => $startValue->{curRadioStation}
       if defined $radioStation;
-   FRITZBOX_Web_PostCmd( $hash, \@webCmdArray );
+   FRITZBOX_Web_CmdPost( $hash, \@webCmdArray );
 
    return undef;
 } # END sub FRITZBOX_StartRadio_Web
@@ -4031,12 +4050,13 @@ sub FRITZBOX_Web_OpenCon ($)
 
 # Execute commands via the web connection
 ############################################
-sub FRITZBOX_Web_PostCmd($$@)
+sub FRITZBOX_Web_CmdPost($$@)
 {
    my ($hash, $webCmdArray, $page) = @_;
    my $name = $hash->{NAME};
    
    unless ( $hash->{WEBCM} ) {
+      @{$webCmdArray} = ();
       my $msg = "API webcm not available on the box.";
       FRITZBOX_Log $hash, 4, $msg;
       my @retArray = (0, $msg);
@@ -4080,6 +4100,43 @@ sub FRITZBOX_Web_PostCmd($$@)
       # return \@retArray;
    # }
    
+   my @retArray = (1, $sid);
+   return \@retArray;
+}
+
+# Execute commands via the web connection
+############################################
+sub FRITZBOX_Web_CmdGet($$)
+{
+#set Fritzbox ring 612 ringring
+#URL=http://fritz.box/fon_devices/edit_dect_ring_tone.lua?idx=4&sid=5695bd219020152b&start_ringtest=1&ringtone=4&xhr=1&t1436900289183=nocache
+#URL=http://fritz.box/fon_devices/edit_dect_ring_tone.lua?idx=4&sid=5695bd219020152b&start_ringtest=2&xhr=1&t1436900295372=nocache
+   my ($hash, $getCmdArray) = @_;
+   my $name = $hash->{NAME};
+
+   my $sid = FRITZBOX_Web_OpenCon($hash);
+   unless ($sid) {
+      my @retArray = (0, "Didn't get a session ID");
+      return \@retArray;
+   }
+   
+   my $agent = LWP::UserAgent->new( env_proxy => 1, keep_alive => 1, protocols_allowed => ['http'], timeout => 10);
+
+   my $host = AttrVal( $name, "fritzBoxIP", "fritz.box" );
+   foreach ( @{$getCmdArray} ) {
+      my ($page,$getCmdStr) = @{$_};
+      my $url =  'http://'.$host."/".$page."?sid=".$sid.$getCmdStr;
+      FRITZBOX_Log $hash, 3, "Execute HTTP-Get '$url'";
+      my $response = $agent->get( $url );
+
+      if ($response->is_error) {
+         my @retArray = (0, "Error: ".$response->status_line);
+         return \@retArray;
+      }
+   }
+
+   @{$getCmdArray} = ();
+
    my @retArray = (1, $sid);
    return \@retArray;
 }
@@ -4256,7 +4313,7 @@ sub FRITZBOX_fritztris($)
 
 ##################################### 
 #{my @cmd;; $cmd=webCmdArray, "active" => "on";
-# FRITZBOX_Web_PostCmd ($hash, \@webCmdArray, '/wlan/wlan_settings.lua');
+# FRITZBOX_Web_CmdPost ($hash, \@webCmdArray, '/wlan/wlan_settings.lua');
 
 
       # <li><code>set &lt;name&gt; convertRingTone &lt;fullFilePath&gt;</code>
