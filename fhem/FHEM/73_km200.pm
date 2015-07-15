@@ -213,6 +213,7 @@
 #		0053    15.07.2015	Sailor				km200_GetStatService			Deleted
 #		0053    15.07.2015	Sailor				km200_ParseHttpResponseStat		Deleted
 #		0053    15.07.2015	Sailor				km200_GetDynService				Delete Timer after start of polling to avoid clashes
+#		0054    15.07.2015	Sailor				=pod							IntervalStatVal deleted
 ########################################################################################################################
 
 
@@ -281,7 +282,7 @@ sub km200_Define($$)
 	my $url						= $a[2];
 	my $km200_gateway_password	= $a[3];
 	my $km200_private_password	= $a[4];
-	my $ModuleVersion           = "0053";
+	my $ModuleVersion           = "0054";
 
 	$hash->{NAME}				= $name;
 	$hash->{STATE}              = "define";
@@ -3075,19 +3076,6 @@ sub km200_ParseHttpResponseDyn($)
 	<table>
 		<tr>
 			<td>
-			<tr><td align="right" valign="top"><li><code>IntervalStatVal</code> : </li></td><td align="left" valign="top">A valid polling interval for the statical values of the KM200/KM50. The value must be >=20s to allow the km200 module to perform a full polling procedure. <BR>
-																												   The default value is 3600s.<BR>
-																												   The value of "0" will disable the polling of statical values until the next fhem restart or a reload of the fhem.cfg - file.<BR>
-			</td></tr>
-			</td>
-		</tr>
-	</table>
-</ul></ul>
-
-<ul><ul>
-	<table>
-		<tr>
-			<td>
 			<tr><td align="right" valign="top"><li><code>PollingTimeout</code> : </li></td><td align="left" valign="top">A valid time in order to allow the module to wait for a response of the KM200/KM50. Usually this value does not need to be changed but might in case of slow network or slow response.<BR>
 																												   The default and minimum value is 5s.<BR>
 			</td></tr>
@@ -3255,19 +3243,6 @@ sub km200_ParseHttpResponseDyn($)
 			<td>
 			<tr><td align="right" valign="top"><li><code>IntervalDynVal</code> : </li></td><td align="left" valign="top">Ein g&uuml;ltiges Abfrageintervall f&uuml;r die sich st&auml;ndig ver&auml;ndernden - dynamischen Werte der KM200/KM50 Services. Der Wert muss gr&ouml;&szlig;er gleich >=20s sein um dem Modul gen&uuml;gend Zeit einzur&auml;umen eine volle Abfrage auszuf&uuml;hren bevor die n&auml;chste Abfrage startet.<BR>
 																														 Der Default-Wert ist 90s.<BR>
-			</td></tr>
-			</td>
-		</tr>
-	</table>
-</ul></ul>
-	
-<ul><ul>
-	<table>
-		<tr>
-			<td>
-			<tr><td align="right" valign="top"><li><code>IntervalStatVal</code> : </li></td><td align="left" valign="top">Ein g&uuml;ltiges Abfrageintervall f&uuml;r die statischen Werte des KM200/KM50. Der Wert muss gr&ouml;&szlig;er gleich >=20s sein um dem Modul gen&uuml;gend Zeit einzur&auml;umen eine volle Abfrage auszuf&uuml;hren bevor die n&auml;chste Abfrage startet. <BR>
-																														  Der Default-Wert ist 3600s.<BR>
-																														  Der Wert "0" deaktiviert die wiederholte Abfrage der statischen Werte bis das fhem-System erneut gestartet wird oder die fhem.cfg neu geladen wird.<BR>
 			</td></tr>
 			</td>
 		</tr>
